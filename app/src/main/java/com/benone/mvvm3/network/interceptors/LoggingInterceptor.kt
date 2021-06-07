@@ -62,6 +62,31 @@ class LoggingInterceptor(builder: Builder) : Interceptor {
         val segmentList:List<String> = (request.tag() as Request).url().encodedPathSegments()
         val chainMs:Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-st)
         val header:String = response.headers().toString()
+        val code:Int = response.code()
+        val isSuccessful:Boolean = response.isSuccessful
+        val responseBody:ResponseBody? = response.body()
+        val contentType:MediaType? = responseBody?.contentType()
+
+        var subtype:String? = null
+        var body:ResponseBody?=null
+
+        if(contentType!=null){
+            subtype = contentType.subtype()
+        }
+
+        if (subtype != null && (subtype.contains("json")
+                    || subtype.contains("xml")
+                    || subtype.contains("plain")
+                    ||subtype.contains("html"))
+        ){
+            val bodyString:String = Printer.getJsonString(responseBody?.string())
+            Printer.printJsonResponse(builder,chainMs,isSuccessful,code,header,bodyString,segmentList)
+            body = ResponseBody.create(contentType,bodyString)
+        }else{
+            Printer.printFileResponse(builder,chainMs,isSuccessful,code,header,segmentList)
+            return response
+        }
+        return response.newBuilder().body(body).build()
 
 
     }
